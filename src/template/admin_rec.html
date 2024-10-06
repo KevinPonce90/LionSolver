@@ -1,0 +1,75 @@
+{% extends './layout.html' %}
+
+{% block title %}Index{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block nav %}
+
+{% if priv %}
+<div class="logo">
+    <a href="{{ url_for('admin') }}"> <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt=""
+            width="50px">
+        Lion
+        Solver</a>
+</div>
+
+{% else %}
+<div class="logo">
+    <a href="{{ url_for('home') }}"> <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt=""
+            width="50px">Lion Solver</a>
+</div>
+{% endif %}
+
+
+<div class="logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout">Cerrar sesión</a>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/map-location-dot-solid.svg') }}" class="card-img-top img-fluid"
+                alt="Ver Mapa">
+            <div class="card-body">
+                <h5 class="card-title">Ver Mapa</h5>
+                <p class="card-text">Click aqui para ver el mapa</p>
+                <a href="{{ url_for('home') }}" class="btn btn-primary">Ver Mapa</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/edit-office.svg') }}" class="card-img-top img-fluid"
+                alt="Editar Oficina">
+            <div class="card-body">
+                <h5 class="card-title">Ver Campus</h5>
+                <p class="card-text">Click aqui para ver los Campus</p>
+                <a href="{{ url_for('campus_view') }}" class="btn btn-primary">Ver Campus</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/admins.svg') }}" class="card-img-top img-fluid"
+                alt="Editar Oficina">
+            <div class="card-body">
+                <h5 class="card-title">Ver Administradores</h5>
+                <p class="card-text">Click aqui para ver a los Administradores</p>
+                <a href="{{ url_for('admin_View') }}" class="btn btn-primary">Ver Administradores</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

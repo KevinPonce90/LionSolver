@@ -1,0 +1,196 @@
+{% extends './layout.html' %}
+
+{% block title %}Campus{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/campus.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
+
+{% block nav %}
+{% if priv %}
+<div class="logo">
+    <a href="{{ url_for('admin') }}">
+        <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt="" width="50px">
+        Lion Solver
+    </a>
+</div>
+{% else %}
+<div class="logo">
+    <a href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt="" width="50px">
+        Lion Solver
+    </a>
+</div>
+{% endif %}
+<div class="logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout">Cerrar sesión</a>
+</div>
+{% endblock %}
+
+
+{% block body %}
+<div class="main-content">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-success d-flex align-items-center" role="alert">
+        <strong>{{ message }}</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="table-container">
+        <h2>Campus</h2>
+        <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addCampusModal">
+            Agregar campus
+        </button>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Latitud</th>
+                    <th scope="col">Longitud</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for campus in campus_list %}
+                <tr>
+                    <td>{{ campus.campus_name }}</td>
+                    <td>{{ campus.campus_lat }}</td>
+                    <td>{{ campus.campus_lon }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#editCampusModal{{ campus.campus_name }}">Actualizar</button>
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#deleteCampusModal{{ campus.campus_name }}">Eliminar</button>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Edit Campus Modal -->
+                <div class="modal fade" id="editCampusModal{{ campus.campus_name }}" tabindex="-1"
+                    aria-labelledby="editCampusModalLabel{{ campus.campus_name }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <form action="{{ url_for('campus_Edit') }}" method="POST" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="campus_name" value="{{ campus.campus_name }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editCampusModalLabel{{ campus.campus_name }}">Editar
+                                        Campus
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Cerrar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="campus_lat{{ campus.campus_name }}"
+                                            class="form-label">Latitud</label>
+                                        <input type="text" class="form-control" id="campus_lat{{ campus.campus_name }}"
+                                            name="campus_lat" value="{{ campus.campus_lat }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="campus_lon{{ campus.campus_name }}"
+                                            class="form-label">Longitud</label>
+                                        <input type="text" class="form-control" id="campus_lon{{ campus.campus_name }}"
+                                            name="campus_lon" value="{{ campus.campus_lon }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="campus_coords" class="form-label">Coordenadas (JSON)</label>
+                                        <input type="file" class="form-control" id="campus_coords" name="campus_coords">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Cerrar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delete Campus Modal -->
+                <div class="modal fade" id="deleteCampusModal{{ campus.campus_name }}" tabindex="-1"
+                    aria-labelledby="deleteCampusModalLabel{{ campus.campus_name }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <form action="{{ url_for('campus_Delete') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="campus_name" value="{{ campus.campus_name }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteCampusModalLabel{{ campus.campus_name }}">Eliminar
+                                        Campus
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Cerrar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>¿Está seguro de que desea eliminar el campus <strong>{{ campus.campus_name
+                                            }}</strong>?</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add Campus Modal -->
+    <div class="modal fade" id="addCampusModal" tabindex="-1" aria-labelledby="addCampusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="{{ url_for('campus_Add') }}" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addCampusModalLabel">Agregar Campus</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Form Fields for Adding Campus -->
+                        <div class="mb-3">
+                            <label for="campus_name" class="form-label">Nombre del Campus</label>
+                            <input type="text" class="form-control" id="campus_name" name="campus_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="campus_lat" class="form-label">Latitud</label>
+                            <input type="text" class="form-control" id="campus_lat" name="campus_lat" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="campus_lon" class="form-label">Longitud</label>
+                            <input type="text" class="form-control" id="campus_lon" name="campus_lon" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="campus_coords" class="form-label">Coordenadas (JSON)</label>
+                            <input type="file" class="form-control" id="campus_coords" name="campus_coords" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary">Agregar Campus</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

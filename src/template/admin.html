@@ -1,0 +1,142 @@
+{% extends './layout.html' %}
+
+{% block title %}Index{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block nav %}
+{% if priv %}
+<div class="logo">
+    <a href="{{ url_for('admin') }}"> <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt=""
+            width="50px">
+        Lion
+        Solver</a>
+</div>
+{% else %}
+<div class="logo">
+    <a href="{{ url_for('home') }}"> <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt=""
+            width="50px">Lion Solver</a>
+</div>
+{% endif %}
+<div class="logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout">Cerrar sesión</a>
+</div>
+{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for message in messages %}
+<div class="alert alert-success d-flex align-items-center" role="alert">
+    <strong>{{ message }}</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/map-location-dot-solid.svg') }}" class="card-img-top img-fluid"
+                alt="Ver Mapa">
+            <div class="card-body">
+                <h5 class="card-title">Ver Mapa</h5>
+                <p class="card-text">Click aqui para ver el mapa</p>
+                <a href="{{ url_for('home') }}" class="btn btn-primary">Ver Mapa</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/edit-office.svg') }}" class="card-img-top img-fluid"
+                alt="Editar Oficina">
+            <div class="card-body">
+                <h5 class="card-title">Editar oficina</h5>
+                <p class="card-text">Click aqui para editar la oficina</p>
+                <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#edit_Office">Editar
+                    Oficina</a>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/pdf_chat.svg') }}" class="card-img-top img-fluid"
+                alt="Editar Oficina">
+            <div class="card-body">
+                <h5 class="card-title">Entrenar ChatBot</h5>
+                <p class="card-text">Click aqui para subir el pdf</p>
+                <a href="#" class="btn btn-primary">Entrenar Chatbot</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="edit_Office" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="exampleModalLabel">Editar Oficina</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('office_Edit') }}" method="POST" class="form-horizontal"
+                nctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="office_id" value="{{admin.office_id}}">
+                <div class="modal-body">
+                    <div class="mb-3 row">
+                        <label for="office-name" class="col-sm-4 col-form-label">Nombre de la Oficina:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="office-name" name="office_name"
+                                placeholder="Nombre">
+                        </div>
+                    </div>
+                    <div class="mb-3 row">
+                        <label for="office-desc" class="col-sm-4 col-form-label">Descripción:</label>
+                        <div class="col-sm-8">
+                            <textarea class="form-control" id="office-desc" name="office_desc" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="mb-3 row">
+                        <label for="office-phone" class="col-sm-4 col-form-label">Teléfono:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="office-phone" name="office_phone"
+                                placeholder="Teléfono">
+                        </div>
+                    </div>
+                    <div class="mb-3 row">
+                        <label for="office-hours" class="col-sm-4 col-form-label">Horario:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="office-hours" name="office_hours"
+                                placeholder="Horario">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+{% endblock %}
+
+
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

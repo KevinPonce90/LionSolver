@@ -1,0 +1,71 @@
+{% extends './layout.html' %}
+
+{% block title %}Index{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+{% endblock %}
+
+{% block nav %}
+
+{% if priv %}
+<div class="logo">
+    <a href="{{ url_for('admin') }}"> <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt=""
+            width="50px">
+        Lion
+        Solver</a>
+</div>
+
+{% else %}
+<div class="logo">
+    <a href="{{ url_for('home') }}"> <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt=""
+            width="50px">Lion Solver</a>
+</div>
+{% endif %}
+
+
+<div class="logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout">Cerrar sesión</a>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="card text-center">
+    <div class="card-header">
+        <h1>{{ campus.campus_name}} {{ current_user.fullname }}</h1>
+    </div>
+    <div class="card-body">
+        {{ iframe|safe }}
+    </div>
+</div>
+
+<!-- Chatbot -->
+<div class="chatbot">
+    <div class="chatbot-icon" id="chatbotIcon">
+        <!-- Ícono del chatbot -->
+        <img src="{{ url_for('static', filename='img/Lion_Logo.webp') }}" alt="Chatbot" width="50px">
+    </div>
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <h4>Chatbot</h4>
+            <span id="closeChatbot">&times;</span>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <!-- Aquí se mostrarán los mensajes -->
+        </div>
+        <div class="chatbot-input">
+            <input type="text" id="chatbotInput" placeholder="Escribe un mensaje...">
+            <button id="sendChatbotMessage">Enviar</button>
+        </div>
+    </div>
+</div>
+<script>
+    const csrfToken = "{{ csrf_token() }}";
+</script>
+{% endblock %}
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,265 @@
+{% extends './layout.html' %}
+
+{% block title %}Administradores{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+
+<style>
+    /* Custom CSS to adjust the table width and margins */
+    .table-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .table-container h2 {
+        margin-bottom: 20px;
+    }
+
+    .btn-align-left {
+        display: block;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+{% if priv %}
+<div class="logo">
+    <a href="{{ url_for('admin') }}">
+        <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt="" width="50px">
+        Lion Solver
+    </a>
+</div>
+{% else %}
+<div class="logo">
+    <a href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt="" width="50px">
+        Lion Solver
+    </a>
+</div>
+{% endif %}
+<div class="logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout">Cerrar sesión</a>
+</div>
+{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for message in messages %}
+<div class="alert alert-success d-flex align-items-center" role="alert">
+    <strong>{{ message }}</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="table-container">
+    <h2>Administradores</h2>
+    <button type="button" class="btn btn-primary btn-align-left" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+        Agregar administrador
+    </button>
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Código</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Campus</th>
+                <th scope="col">Oficina</th>
+                <th scope="col">Correo</th>
+                <th scope="col">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ad in admin %}
+            <tr>
+                <td>{{ ad.admin_cod }}</td>
+                <td>{{ ad.admin_fullname }}</td>
+                <td>{{ ad.campus_name }}</td>
+                <td>{{ ad.office_name }}</td>
+                <td>{{ ad.admin_email }}</td>
+                <td>
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#editAdminModal{{ ad.admin_cod }}">
+                        Actualizar
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#deleteAdminModal{{ ad.admin_cod }}">
+                        Eliminar
+                    </button>
+                </td>
+            </tr>
+
+            <!-- Edit Admin Modal -->
+            <div class="modal fade" id="editAdminModal{{ ad.admin_cod }}" tabindex="-1"
+                aria-labelledby="editAdminModalLabel{{ ad.admin_cod }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form action="{{ url_for('admin_Edit') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="admin_cod" value="{{ ad.admin_cod }}">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editAdminModalLabel{{ ad.admin_cod }}">Editar Administrador
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="admin_fullname{{ ad.admin_cod }}" class="form-label">Nombre
+                                        Completo</label>
+                                    <input type="text" class="form-control" id="admin_fullname{{ ad.admin_cod }}"
+                                        name="admin_fullname" value="{{ ad.admin_fullname }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="admin_email{{ ad.admin_cod }}" class="form-label">Correo</label>
+                                    <input type="email" class="form-control" id="admin_email{{ ad.admin_cod }}"
+                                        name="admin_email" value="{{ ad.admin_email }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="admin_campus{{ ad.admin_cod }}" class="form-label">Campus</label>
+                                    <select class="form-select" id="admin_campus{{ ad.admin_cod }}" name="admin_campus"
+                                        required>
+                                        {% for campus_item in campus %}
+                                        <option value="{{ campus_item.campus_name }}" {% if
+                                            campus_item.campus_name==ad.campus_name %}selected{% endif %}>
+                                            {{ campus_item.campus_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="admin_office{{ ad.admin_cod }}" class="form-label">Oficina</label>
+                                    <select class="form-select" id="admin_office{{ ad.admin_cod }}" name="admin_office"
+                                        required>
+                                        {% for office_item in office %}
+                                        <option value="{{ office_item.office_id }}" {% if
+                                            office_item.office_id==ad.admin_office %}selected{% endif %}>
+                                            {{ office_item.office_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="admin_priv{{ ad.admin_cod }}" class="form-label">Privilegios</label>
+                                    <select class="form-select" id="admin_priv{{ ad.admin_cod }}" name="admin_priv"
+                                        required>
+                                        <option value="1" {% if ad.admin_priv==1 %}selected{% endif %}>Super</option>
+                                        <option value="0" {% if ad.admin_priv==0 %}selected{% endif %}>Regular</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Admin Modal -->
+            <div class="modal fade" id="deleteAdminModal{{ ad.admin_cod }}" tabindex="-1"
+                aria-labelledby="deleteAdminModalLabel{{ ad.admin_cod }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form action="{{ url_for('admin_Delete') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="admin_cod" value="{{ ad.admin_cod }}">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deleteAdminModalLabel{{ ad.admin_cod }}">Eliminar
+                                    Administrador
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>¿Está seguro de que desea eliminar al administrador <strong>{{ ad.admin_fullname
+                                        }}</strong>?</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary"
+                                    data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Admin Modal -->
+<div class="modal fade" id="addAdminModal" tabindex="-1" aria-labelledby="addAdminModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ url_for('admin_Add') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAdminModalLabel">Agregar Administrador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="admin_cod" class="form-label">Código</label>
+                        <input type="text" class="form-control" id="admin_cod" name="admin_cod" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="admin_password" name="admin_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_fullname" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="admin_fullname" name="admin_fullname" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_email" class="form-label">Correo</label>
+                        <input type="email" class="form-control" id="admin_email" name="admin_email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_campus" class="form-label">Campus</label>
+                        <select class="form-select" id="admin_campus" name="admin_campus" required>
+                            {% for campus_item in campus %}
+                            <option value="{{ campus_item.campus_name }}">{{ campus_item.campus_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_office" class="form-label">Oficina</label>
+                        <select class="form-select" id="admin_office" name="admin_office" required>
+                            {% for office_item in office %}
+                            <option value="{{ office_item.office_id }}">{{ office_item.office_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_priv" class="form-label">Privilegios</label>
+                        <select class="form-select" id="admin_priv" name="admin_priv" required>
+                            <option value="1">Super</option>
+                            <option value="0">Regular</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Agregar Administrador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}
