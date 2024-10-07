@@ -1,0 +1,229 @@
+{% extends './layout.html' %}
+
+{% block title %}Oficinas{% endblock %}
+
+{% block customCSS %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+
+<style>
+    .table-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .table-container h2 {
+        margin-bottom: 20px;
+    }
+
+    .btn-align-left {
+        display: block;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+{% if priv %}
+<div class="logo">
+    <a href="{{ url_for('admin') }}">
+        <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt="" width="50px">
+        Lion Solver
+    </a>
+</div>
+{% else %}
+<div class="logo">
+    <a href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='img/Lion_Logo.png') }}" alt="" width="50px">
+        Lion Solver
+    </a>
+</div>
+{% endif %}
+<div class="logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout">Cerrar sesión</a>
+</div>
+{% endblock %}
+
+{% block body %}
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for message in messages %}
+<div class="alert alert-success d-flex align-items-center" role="alert">
+    <strong>{{ message }}</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="table-container">
+    <h2>Oficinas</h2>
+    <button type="button" class="btn btn-primary btn-align-left" data-bs-toggle="modal"
+        data-bs-target="#addOfficeModal">
+        Agregar Oficina
+    </button>
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Campus</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Latitud</th>
+                <th scope="col">Longitud</th>
+                <th scope="col">Carrera</th>
+                <th scope="col">Coordinador</th>
+                <th scope="col">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for of in office %}
+            <tr>
+                <td>{{ of.office_campus }}</td>
+                <td>{{ of.office_name }}</td>
+                <td>{{ of.office_lat }}</td>
+                <td>{{ of.office_lon }}</td>
+                <td>{{ of.office_career }}</td>
+                <td>{{ of.admin_fullname }}</td>
+                <td>
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#editOfficeModal{{ of.office_id }}">
+                        Actualizar
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#deleteOfficeModal{{ of.office_id }}">
+                        Eliminar
+                    </button>
+                </td>
+            </tr>
+
+            <!-- Edit Office Modal -->
+            <div class="modal fade" id="editOfficeModal{{ of.office_id }}" tabindex="-1"
+                aria-labelledby="editOfficeModalLabel{{ of.office_id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form action="{{ url_for('office_Edit_Rec') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="office_id" value="{{ of.office_id }}">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editOfficeModalLabel{{ of.office_id }}">Editar Oficina</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="office_name{{ of.office_id }}" class="form-label">Nombre de la
+                                        Oficina</label>
+                                    <input type="text" class="form-control" id="office_name{{ of.office_id }}"
+                                        name="office_name" value="{{ of.office_name }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="office_lat{{ of.office_id }}" class="form-label">Latitud</label>
+                                    <input type="text" class="form-control" id="office_lat{{ of.office_id }}"
+                                        name="office_lat" value="{{ of.office_lat }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="office_lon{{ of.office_id }}" class="form-label">Longitud</label>
+                                    <input type="text" class="form-control" id="office_lon{{ of.office_id }}"
+                                        name="office_lon" value="{{ of.office_lon }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="office_career{{ of.office_id }}" class="form-label">Carrera</label>
+                                    <input type="text" class="form-control" id="office_career{{ of.office_id }}"
+                                        name="office_career" value="{{ of.office_career }}" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Office Modal -->
+            <div class="modal fade" id="deleteOfficeModal{{ of.office_id }}" tabindex="-1"
+                aria-labelledby="deleteOfficeModalLabel{{ of.office_id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form action="{{ url_for('office_Delete') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="office_id" value="{{ of.office_id }}">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deleteOfficeModalLabel{{ of.office_id }}">Eliminar Oficina
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>¿Está seguro de que desea eliminar la oficina <strong>{{ of.office_name }}</strong>?
+                                </p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary"
+                                    data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Office Modal -->
+<div class="modal fade" id="addOfficeModal" tabindex="-1" aria-labelledby="addOfficeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ url_for('office_Add') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addOfficeModalLabel">Agregar Oficina</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="office_campus" class="form-label">Campus</label>
+                        <select class="form-select" id="office_campus" name="office_campus" required>
+                            <option value="" disabled selected>Selecciona un campus</option>
+                            {% for campus_item in campus %}
+                            <option value="{{ campus_item.campus_name }}">{{ campus_item.campus_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="office_name" class="form-label">Nombre de la Oficina</label>
+                        <input type="text" class="form-control" id="office_name" name="office_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="office_lat" class="form-label">Latitud</label>
+                        <input type="text" class="form-control" id="office_lat" name="office_lat" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="office_lon" class="form-label">Longitud</label>
+                        <input type="text" class="form-control" id="office_lon" name="office_lon" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="office_career" class="form-label">Carrera</label>
+                        <input type="text" class="form-control" id="office_career" name="office_career" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Agregar Oficina</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

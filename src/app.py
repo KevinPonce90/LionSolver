@@ -70,7 +70,7 @@ def split_text(text: str, max_tokens: int = 500) -> list:
 
     return chunks
 
-def generate_embeddings(chunks: list) -> list:
+def generate_embeddings(chunks: list, office_id: str) -> list:
     embeddings = []
     for chunk in chunks:
         try:
@@ -79,11 +79,12 @@ def generate_embeddings(chunks: list) -> list:
                 model="text-embedding-ada-002"
             )
             embedding = response['data'][0]['embedding']
-            embeddings.append({'embedding': embedding, 'text': chunk})
+            embeddings.append({'embedding': embedding, 'text': chunk, 'office_id': office_id})
         except Exception as e:
             print(f"Error al generar embedding para un fragmento: {e}")
             continue
     return embeddings
+
 
 def save_embeddings(embeddings: list, filename: str):
     with open(filename, 'wb') as f:
@@ -94,7 +95,7 @@ def load_embeddings(filename: str):
         embeddings = pickle.load(f)
     return embeddings
 
-def get_relevant_chunks(question: str, embeddings: list, top_k: int = 3) -> list:
+def get_relevant_chunks(question: str, embeddings: list, top_k: int = 5) -> list:
     response = openai.Embedding.create(
         input=question,
         model="text-embedding-ada-002"
@@ -107,12 +108,12 @@ def get_relevant_chunks(question: str, embeddings: list, top_k: int = 3) -> list
             [question_embedding],
             [item['embedding']]
         )[0][0]
-        similarities.append(similarity)
+        similarities.append((similarity, item))
     
-    top_indices = np.argsort(similarities)[-top_k:][::-1]
-    
-    relevant_chunks = [embeddings[i]['text'] for i in top_indices]
-    return relevant_chunks
+    similarities.sort(key=lambda x: x[0], reverse=True)
+    top_items = similarities[:top_k]
+    return top_items
+
 
 def get_answer(question: str, context: str, office_info: dict) -> str:
     prompt = f"""Utiliza el siguiente contexto para responder la pregunta de manera clara y concisa.
@@ -138,7 +139,6 @@ def get_answer(question: str, context: str, office_info: dict) -> str:
 
         answer = response.choices[0].message['content']
 
-        # Añadir información de la oficina al final de la respuesta
         office_details = f"""
         
         Oficina Correspondiente:
@@ -227,7 +227,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# ~~~~~~~~~~~~~~~~~~~~ MAP ~~~~~~~~~~~~~~~~~~~~
 @app.route('/home')
 @login_required
 def home():
@@ -235,57 +234,62 @@ def home():
     priv = False
     if isinstance(current_user, Admin):
         priv = True
+
     cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("SELECT * FROM campus C INNER JOIN offices O ON C.campus_name = O.office_campus INNER JOIN admins A ON O.office_id = A.admin_office WHERE campus_name = %s", (user.campus,))
-    cam = cursor.fetchone()
+    offices = cursor.fetchall()
     cursor.close()
 
+    if offices:
+        first_office = offices[0]
+        m = folium.Map([first_office['campus_lat'], first_office['campus_lon']], zoom_start=17, max_zoom=30)
 
+        for office in offices:
+            html = """
+            <style> 
+                h1 {{
+                    font-size: 24px;
+                    font-family: bold, sans-serif;
+                }}
+                p {{
+                    font-size: 16px;
+                    color: darkblue;
+                    margin-bottom: 10px;
+                }}
+            </style>
+            <h1>{office_name}</h1>
+            <p>{office_desc}</p>
+            <p>{office_phone}</p>
+            <p>{office_hours}</p>
+            """.format(
+                office_name=office['office_name'], 
+                office_desc=office['office_desc'], 
+                office_phone=office['office_phone'], 
+                office_hours=office['office_hours']
+            )
+            
+            folium.Marker([office['office_lat'], office['office_lon']], 
+                          tooltip=office['office_name'], 
+                          popup=folium.Popup(html, max_width=2650), 
+                          icon=folium.Icon(color='red')).add_to(m)
 
-    if cam:
-        m = folium.Map([cam['campus_lat'], cam['campus_lon']], zoom_start=17, max_zoom=30)
-        html = """
-
-        <style> 
-            h1 {{
-                font-size: 24px;
-                font-family: bold, sans-serif;
-            }}
-            p {{
-                font-size: 16px;
-                color: darkblue;
-                margin-bottom: 10px;
-            }}
-                </style>
-                <h1>{office_name}</h1>
-                <p>{office_desc}</p>
-                <p>{office_phone}</p>
-                <p>{office_hours}</p>
-                """.format(
-            office_name=cam['office_name'], 
-            office_desc=cam['office_desc'], 
-            office_phone=cam['office_phone'], 
-            office_hours=cam['office_hours']
-        )
-        
-        folium.Marker([cam['office_lat'], cam['office_lon']], tooltip=cam['office_name'], popup=folium.Popup(html, max_width=2650), icon=folium.Icon(color='red')).add_to(m)
-
-        if isinstance(cam['campus_coords'], dict):
-            geojson_data = json.dumps(cam['campus_coords'])
+        if isinstance(first_office['campus_coords'], dict):
+            geojson_data = json.dumps(first_office['campus_coords'])
         else:
-            geojson_data = cam['campus_coords']
+            geojson_data = first_office['campus_coords']
         
         folium.GeoJson(geojson_data, style_function=lambda feature: {
             "color": "black",
             "weight": 4,
-        },).add_to(m)
+        }).add_to(m)
 
         m.get_root().html.add_child(folium.Element("<style>#map {width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0;}</style>"))
         iframe = m._repr_html_()
 
-        return render_template('home.html', campus=cam, iframe=iframe, priv = priv)
+        return render_template('home.html', campus=first_office, iframe=iframe, priv=priv)
     else:
         return "Campus not found", 404
+
 
 # ~~~~~~~~~~~~~~~~~~~~ CAMPUS CRUD ~~~~~~~~~~~~~~~~~~~~
 @app.route('/campus_view', methods=["GET"])
@@ -390,11 +394,27 @@ def get_office_info(office_id):
             'office_contact': 'No disponible'
         }
 
+@app.route('/office_View', methods=["GET", "POST"])
+@login_required
+def office_View():
+    cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT * FROM offices O LEFT JOIN admins A ON O.office_id = A.admin_office")
+    of = cursor.fetchall()
+    cursor.close()
+
+    cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT * FROM campus")
+    ca = cursor.fetchall()
+    cursor.close()
+
+    priv = True
+
+    return render_template('office_view.html', office=of, priv=priv, campus = ca)
 
 @app.route('/office_Add', methods=["GET", "POST"])
 @login_required
 def office_Add():
-    office_campus = request.form['office_campues'].encode('utf-8')
+    office_campus = request.form['office_campus'].encode('utf-8')
     office_name = request.form['office_name'].encode('utf-8')
     office_lat = request.form['office_lat'].encode('utf-8')
     office_lon = request.form['office_lon'].encode('utf-8')
@@ -405,18 +425,16 @@ def office_Add():
     db.connection.commit()
     cursor.close()
     flash('Oficina creada con exito.')
-    return redirect(url_for('admin'))
+    return redirect(url_for('office_View'))
 
 @app.route('/office_Edit', methods=["GET", "POST"])
 @login_required
 def office_Edit():
-
+    office_id = request.form['office_id']
     office_name = request.form['office_name'].encode('utf-8')
     office_desc = request.form['office_desc'].encode('utf-8')
     office_phone = request.form['office_phone'].encode('utf-8')
     office_hours = request.form['office_hours'].encode('utf-8')
-
-    office_id = request.form['office_id']
 
     cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("UPDATE offices SET office_name = %s, office_desc = %s, office_phone = %s, office_hours = %s WHERE office_id = %s", (office_name, office_desc, office_phone, office_hours, office_id,))
@@ -424,6 +442,25 @@ def office_Edit():
     cursor.close()
     flash('Cuenta editada con exito.')
     return redirect(url_for('admin'))
+
+@app.route('/office_Edit_Rec', methods=["GET", "POST"])
+@login_required
+def office_Edit_Rec():
+    office_id = request.form['office_id']
+    office_name = request.form['office_name'].encode('utf-8')
+    office_lat = request.form['office_lat'].encode('utf-8')
+    office_lon = request.form['office_lon'].encode('utf-8')
+    office_career = request.form['office_career'].encode('utf-8')
+    
+    cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("UPDATE offices SET office_name = %s, office_lat = %s, office_lon = %s, office_career = %s WHERE office_id = %s", (office_name, office_lat, office_lon, office_career, office_id))
+    
+    db.connection.commit()
+    cursor.close()
+    
+    flash('Oficina editada con éxito.')
+    return redirect(url_for('office_View'))
+
 
 @app.route('/office_Delete', methods=["GET", "POST"])
 @login_required
@@ -434,7 +471,7 @@ def office_Delete():
     db.connection.commit()
     cursor.close()
     flash('Oficina eliminada con exito.')
-    return redirect(url_for('admin'))
+    return redirect(url_for('office_View'))
 
 
 # ~~~~~~~~~~~~~~~~~~~~ ADMIN CRUD ~~~~~~~~~~~~~~~~~~~~
@@ -553,6 +590,7 @@ def chatbot():
 
 
 
+
 @app.route('/upload_pdf', methods=['GET', 'POST'])
 @login_required
 def upload_pdf():
@@ -565,8 +603,20 @@ def upload_pdf():
             pdf_file.save(pdf_path)
             text = extract_text_from_pdf(pdf_path)
             chunks = split_text(text)
-            embeddings = generate_embeddings(chunks)
-            save_embeddings(embeddings, 'embeddings.pkl')
+            office_id = str(current_user.admin_office)
+            embeddings = generate_embeddings(chunks, office_id)
+            
+            embeddings_folder = 'embeddings'
+            if not os.path.exists(embeddings_folder):
+                os.makedirs(embeddings_folder)
+            embeddings_filename = f'embeddings_{office_id}.pkl'
+            save_embeddings(embeddings, os.path.join(embeddings_folder, embeddings_filename))
+
+            all_embeddings.clear()
+            for filename in os.listdir(embeddings_folder):
+                if filename.endswith('.pkl'):
+                    embeddings = load_embeddings(os.path.join(embeddings_folder, filename))
+                    all_embeddings.extend(embeddings)
 
             flash('El PDF ha sido procesado y los embeddings se han generado correctamente.')
             return redirect(url_for('home'))
@@ -575,6 +625,7 @@ def upload_pdf():
             return redirect(url_for('upload_pdf'))
     else:
         return render_template('upload_pdf.html')
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~ PROTECT VIEW ~~~~~~~~~~~~~~~~~~~~

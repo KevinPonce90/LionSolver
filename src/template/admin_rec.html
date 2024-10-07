@@ -56,6 +56,17 @@
     </div>
     <div class="col-12 col-sm-6 col-md-4 mb-3">
         <div class="card" style="width: 100%;">
+            <img src="{{ url_for('static', filename='img/offices.svg') }}" class="card-img-top img-fluid"
+                alt="Editar Oficina">
+            <div class="card-body">
+                <h5 class="card-title">Ver Oficinas</h5>
+                <p class="card-text">Click aqui para ver las oficinas</p>
+                <a href="{{ url_for('office_View') }}" class="btn btn-primary">Ver Oficinas</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 mb-3">
+        <div class="card" style="width: 100%;">
             <img src="{{ url_for('static', filename='img/admins.svg') }}" class="card-img-top img-fluid"
                 alt="Editar Oficina">
             <div class="card-body">
