@@ -49,7 +49,6 @@ def extract_text_from_pdf(pdf_file: str) -> str:
 
 def split_text(text: str, max_tokens: int = 500) -> list:
     tokenizer = tiktoken.get_encoding("cl100k_base")
-    
     sentences = text.split('. ')
     chunks = []
     chunk = ''
@@ -57,23 +56,41 @@ def split_text(text: str, max_tokens: int = 500) -> list:
 
     for sentence in sentences:
         sentence_tokens = len(tokenizer.encode(sentence))
-        if tokens + sentence_tokens <= max_tokens:
-            chunk += sentence + '. '
-            tokens += sentence_tokens
+        if sentence_tokens > max_tokens:
+            words = sentence.split(' ')
+            sub_sentence = ''
+            sub_tokens = 0
+            for word in words:
+                word_tokens = len(tokenizer.encode(word))
+                if sub_tokens + word_tokens <= max_tokens:
+                    sub_sentence += word + ' '
+                    sub_tokens += word_tokens
+                else:
+                    chunks.append(sub_sentence.strip())
+                    sub_sentence = word + ' '
+                    sub_tokens = word_tokens
+            if sub_sentence:
+                chunks.append(sub_sentence.strip())
         else:
-            chunks.append(chunk.strip())
-            chunk = sentence + '. '
-            tokens = sentence_tokens
+            if tokens + sentence_tokens <= max_tokens:
+                chunk += sentence + '. '
+                tokens += sentence_tokens
+            else:
+                chunks.append(chunk.strip())
+                chunk = sentence + '. '
+                tokens = sentence_tokens
 
     if chunk:
         chunks.append(chunk.strip())
 
     return chunks
 
+
 def generate_embeddings(chunks: list, office_id: str) -> list:
     embeddings = []
-    for chunk in chunks:
+    for idx, chunk in enumerate(chunks):
         try:
+            print(f"Generando embedding para el fragmento {idx+1}/{len(chunks)}")
             response = openai.Embedding.create(
                 input=chunk,
                 model="text-embedding-ada-002"
@@ -81,9 +98,11 @@ def generate_embeddings(chunks: list, office_id: str) -> list:
             embedding = response['data'][0]['embedding']
             embeddings.append({'embedding': embedding, 'text': chunk, 'office_id': office_id})
         except Exception as e:
-            print(f"Error al generar embedding para un fragmento: {e}")
+            print(f"Error al generar embedding para el fragmento {idx+1}: {e}")
             continue
+    print(f"Total de embeddings generados: {len(embeddings)}")
     return embeddings
+
 
 
 def save_embeddings(embeddings: list, filename: str):
@@ -91,9 +110,16 @@ def save_embeddings(embeddings: list, filename: str):
         pickle.dump(embeddings, f)
 
 def load_embeddings(filename: str):
-    with open(filename, 'rb') as f:
-        embeddings = pickle.load(f)
-    return embeddings
+    try:
+        with open(filename, 'rb') as f:
+            embeddings = pickle.load(f)
+        print(f"Embeddings cargados desde {filename}: {len(embeddings)} embeddings")
+        return embeddings
+    except Exception as e:
+        print(f"Error al cargar embeddings desde {filename}: {e}")
+        return []
+
+
 
 def get_relevant_chunks(question: str, embeddings: list, top_k: int = 5) -> list:
     response = openai.Embedding.create(
@@ -116,16 +142,24 @@ def get_relevant_chunks(question: str, embeddings: list, top_k: int = 5) -> list
 
 
 def get_answer(question: str, context: str, office_info: dict) -> str:
+    def is_greeting(text):
+        greetings = ['hola', 'buenos días', 'buenas tardes', 'buenas noches', 'qué tal', 'saludos', 'buen día', 'hi', 'hello', 'hey']
+        text = text.lower().strip()
+        return text in greetings
+
+    if is_greeting(question):
+        return "Hola, ¿en qué puedo ayudarte?"
+
     prompt = f"""Utiliza el siguiente contexto para responder la pregunta de manera clara y concisa.
-    Al final de tu respuesta, indica cuál es la oficina correspondiente y cómo el estudiante puede contactarla.
+                Al final de tu respuesta, indica cuál es la oficina correspondiente y cómo el estudiante puede contactarla.
 
-    Contexto:
-    {context}
+                Contexto:
+                {context}
 
-    Pregunta:
-    {question}
+                Pregunta:
+                {question}
 
-    Respuesta:"""
+                Respuesta:"""
 
     try:
         response = openai.ChatCompletion.create(
@@ -139,20 +173,11 @@ def get_answer(question: str, context: str, office_info: dict) -> str:
 
         answer = response.choices[0].message['content']
 
-        office_details = f"""
-        
-        Oficina Correspondiente:
-        - Nombre: {office_info['office_name']}
-        - Ubicación: {office_info['office_location']}
-        - Horario: {office_info['office_hours']}
-        - Contacto: {office_info['office_contact']}
-        """
-        answer += office_details
-
         return answer
     except Exception as e:
         print(f"Error al obtener respuesta de ChatGPT: {e}")
         return "Lo siento, ha ocurrido un error al obtener la respuesta."
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~ CARGAR EMBEDDINGS ~~~~~~~~~~~~~~~~~~~~
@@ -166,7 +191,11 @@ if not os.path.exists(embeddings_folder):
 for filename in os.listdir(embeddings_folder):
     if filename.endswith('.pkl'):
         embeddings = load_embeddings(os.path.join(embeddings_folder, filename))
+        print(f"Cargando {len(embeddings)} embeddings desde {filename}")
         all_embeddings.extend(embeddings)
+
+print(f"Total de embeddings cargados al iniciar la aplicación: {len(all_embeddings)}")
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~ LOGIN VALIDATION ~~~~~~~~~~~~~~~~~~~~
@@ -566,7 +595,9 @@ def admin():
 @app.route('/chatbot', methods=['POST'])
 @login_required
 def chatbot():
+    print("Solicitud recibida en /chatbot")
     data = request.get_json()
+    print(f"Pregunta del usuario: {data['message']}")
     user_question = data['message']
     
     if not all_embeddings:
@@ -602,15 +633,25 @@ def upload_pdf():
             pdf_path = os.path.join('uploads', pdf_file.filename)
             pdf_file.save(pdf_path)
             text = extract_text_from_pdf(pdf_path)
+            print(f"Texto extraído del PDF ({len(text)} caracteres)")
+            if len(text.strip()) == 0:
+                print("El texto extraído del PDF está vacío.")
+                flash('El PDF no contiene texto o no se pudo extraer.')
+                return redirect(url_for('upload_pdf'))
             chunks = split_text(text)
-            office_id = str(current_user.admin_office)
+            print(f"Número de fragmentos generados: {len(chunks)}")
+            office_id = str(current_user.career)
             embeddings = generate_embeddings(chunks, office_id)
             
             embeddings_folder = 'embeddings'
             if not os.path.exists(embeddings_folder):
                 os.makedirs(embeddings_folder)
             embeddings_filename = f'embeddings_{office_id}.pkl'
-            save_embeddings(embeddings, os.path.join(embeddings_folder, embeddings_filename))
+            embeddings_path = os.path.join(embeddings_folder, embeddings_filename)
+            save_embeddings(embeddings, embeddings_path)
+
+            file_size = os.path.getsize(embeddings_path)
+            print(f"Embeddings guardados en {embeddings_path} ({file_size} bytes)")
 
             all_embeddings.clear()
             for filename in os.listdir(embeddings_folder):
@@ -619,12 +660,13 @@ def upload_pdf():
                     all_embeddings.extend(embeddings)
 
             flash('El PDF ha sido procesado y los embeddings se han generado correctamente.')
-            return redirect(url_for('home'))
+            return redirect(url_for('admin'))
         else:
             flash('Por favor, sube un archivo PDF.')
             return redirect(url_for('upload_pdf'))
     else:
         return render_template('upload_pdf.html')
+
 
 
 
