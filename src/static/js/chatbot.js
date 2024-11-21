@@ -44,7 +44,7 @@ function sendMessage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrfToken, // Usa la variable definida en el script
+        "X-CSRFToken": csrfToken,
       },
       body: JSON.stringify({ message: message }),
     })
@@ -63,6 +63,11 @@ function sendMessage() {
 
         // Desplazar hacia abajo
         messages.scrollTop = messages.scrollHeight;
+
+        // **Nuevo código para resaltar la oficina**
+        if (data.office_id) {
+          highlightOffice(data.office_id);
+        }
       })
       .catch((error) => {
         console.error("Error:", error);

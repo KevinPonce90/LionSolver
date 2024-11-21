@@ -265,57 +265,24 @@ def home():
         priv = True
 
     cursor = db.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM campus C INNER JOIN offices O ON C.campus_name = O.office_campus INNER JOIN admins A ON O.office_id = A.admin_office WHERE campus_name = %s", (user.campus,))
+    cursor.execute("SELECT * FROM campus C INNER JOIN offices O ON C.campus_name = O.office_campus WHERE campus_name = %s", (user.campus,))
     offices = cursor.fetchall()
     cursor.close()
 
     if offices:
         first_office = offices[0]
-        m = folium.Map([first_office['campus_lat'], first_office['campus_lon']], zoom_start=17, max_zoom=30)
+        # Convertir los datos de las oficinas a JSON
+        offices_json = json.dumps(offices, default=str)
 
-        for office in offices:
-            html = """
-            <style> 
-                h1 {{
-                    font-size: 24px;
-                    font-family: bold, sans-serif;
-                }}
-                p {{
-                    font-size: 16px;
-                    color: darkblue;
-                    margin-bottom: 10px;
-                }}
-            </style>
-            <h1>{office_name}</h1>
-            <p>{office_desc}</p>
-            <p>{office_phone}</p>
-            <p>{office_hours}</p>
-            """.format(
-                office_name=office['office_name'], 
-                office_desc=office['office_desc'], 
-                office_phone=office['office_phone'], 
-                office_hours=office['office_hours']
-            )
-            
-            folium.Marker([office['office_lat'], office['office_lon']], 
-                          tooltip=office['office_name'], 
-                          popup=folium.Popup(html, max_width=2650), 
-                          icon=folium.Icon(color='red')).add_to(m)
+        # Obtener el GeoJSON del campus
+        campus_geojson = first_office['campus_coords']
+        # Asegurarnos de que sea un objeto JSON
+        if isinstance(campus_geojson, str):
+            campus_geojson = json.loads(campus_geojson)
+        # Convertir a cadena JSON para pasarlo al template
+        campus_geojson_json = json.dumps(campus_geojson)
 
-        if isinstance(first_office['campus_coords'], dict):
-            geojson_data = json.dumps(first_office['campus_coords'])
-        else:
-            geojson_data = first_office['campus_coords']
-        
-        folium.GeoJson(geojson_data, style_function=lambda feature: {
-            "color": "black",
-            "weight": 4,
-        }).add_to(m)
-
-        m.get_root().html.add_child(folium.Element("<style>#map {width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0;}</style>"))
-        iframe = m._repr_html_()
-
-        return render_template('home.html', campus=first_office, iframe=iframe, priv=priv)
+        return render_template('home.html', campus=first_office, offices_json=offices_json, campus_geojson=campus_geojson_json, priv=priv)
     else:
         return "Campus not found", 404
 
@@ -611,15 +578,16 @@ def chatbot():
         context += item['text'] + "\n\n"
         office_ids.append(item['office_id'])
 
+    # Obtener el office_id más común entre los fragmentos relevantes
     most_common_office_id = max(set(office_ids), key=office_ids.count)
 
     office_info = get_office_info(most_common_office_id)
 
     answer = get_answer(user_question, context, office_info)
     
-    return jsonify({'reply': answer})
-
-
+    # Retornar la respuesta y el office_id
+    print(most_common_office_id)
+    return jsonify({'reply': answer, 'office_id': most_common_office_id})
 
 
 @app.route('/upload_pdf', methods=['GET', 'POST'])
@@ -666,9 +634,6 @@ def upload_pdf():
             return redirect(url_for('upload_pdf'))
     else:
         return render_template('upload_pdf.html')
-
-
-
 
 # ~~~~~~~~~~~~~~~~~~~~ PROTECT VIEW ~~~~~~~~~~~~~~~~~~~~
 @app.route('/protected')
