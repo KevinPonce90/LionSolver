@@ -376,6 +376,7 @@ def get_office_info(office_id):
     cursor.close()
     if office:
         office_info = {
+            'office_id': office['office_id'],
             'office_name': office['office_name'],
             'office_location': f"{office['office_lat']}, {office['office_lon']}",
             'office_hours': office['office_hours'],
@@ -384,6 +385,7 @@ def get_office_info(office_id):
         return office_info
     else:
         return {
+            'office_id': None,
             'office_name': 'Desconocida',
             'office_location': 'No disponible',
             'office_hours': 'No disponible',
@@ -574,16 +576,22 @@ def chatbot():
 
     context = ""
     office_ids = []
-    for _, item in top_items:
+    for similarity, item in top_items:
         context += item['text'] + "\n\n"
         office_ids.append(item['office_id'])
+        print(f"Similarity: {similarity}, Office ID: {item['office_id']}")
+
 
     # Obtener el office_id más común entre los fragmentos relevantes
-    most_common_office_id = max(set(office_ids), key=office_ids.count)
+    most_common_office_id = office_ids[0]
 
     office_info = get_office_info(most_common_office_id)
 
+    print(f"Contexto generado: {context}")
+
     answer = get_answer(user_question, context, office_info)
+    print(f"ID DE LA RESPUESTA: {office_info.get('office_id')}")
+    print(f"Respuesta del chatbot: {office_info } - {answer}")
     
     # Retornar la respuesta y el office_id
     print(most_common_office_id)
