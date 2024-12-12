@@ -63,8 +63,6 @@ function sendMessage() {
 
         // Desplazar hacia abajo
         messages.scrollTop = messages.scrollHeight;
-
-        // **Nuevo código para resaltar la oficina**
         if (data.office_id) {
           highlightOffice(data.office_id);
         }
