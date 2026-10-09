@@ -47,6 +47,13 @@ flowchart TB
 11. [Plan de pruebas](11-plan-de-pruebas.md)
 12. [Seguridad, riesgos y deuda técnica](12-seguridad-riesgos-y-deuda-tecnica.md)
 
+## Versiones para descargar
+
+Toda la documentación unificada en un solo archivo (portada, índice, 36 diagramas y anexos):
+
+- Word: [`export/LionSolver_Documentacion.docx`](export/LionSolver_Documentacion.docx)
+- PDF: [`export/LionSolver_Documentacion.pdf`](export/LionSolver_Documentacion.pdf)
+
 ## Guía de lectura por perfil
 
 | Perfil | Lectura recomendada |
